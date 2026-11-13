@@ -1,0 +1,15 @@
+{
+  // Cloudflare Worker for POST /events. See "Cloudflare Worker" in README.md.
+  "name": "trackin",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-11-01",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "trackin",
+      // Run `bunx wrangler d1 create trackin` and put the database_id it prints here.
+      "database_id": "REPLACE_WITH_YOUR_DATABASE_ID",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

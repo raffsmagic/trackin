@@ -20,7 +20,7 @@ export function beaconTransport(endpoint: string): Transport {
       body,
       keepalive: true,
     });
-    if (!res.ok) throw new Error(`tinytrack: POST ${endpoint} failed with ${res.status}`);
+    if (!res.ok) throw new Error(`trackin: POST ${endpoint} failed with ${res.status}`);
   };
 }
 

@@ -1,5 +1,5 @@
 // React Native entry. Uses fetch and flushes when the app goes to the
-// background. Give AppState from "react-native"; tinytrack does not import it.
+// background. Give AppState from "react-native"; trackin does not import it.
 import type { Tracker, TrackerOptions } from "./core.ts";
 import { initDefault } from "./default.ts";
 

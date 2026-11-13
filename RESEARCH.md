@@ -160,8 +160,11 @@ pipeline is a clean shape for the core.
 
 ## 7. Database for raw events
 
-We did not read a page about databases. All of this section is [unchecked].
-Do a benchmark with real event data before the decision is final.
+We did not read a page about the self-hosted options (SQLite, DuckDB,
+ClickHouse, Postgres). That part of this section is [unchecked]. The
+Cloudflare part (7.1) uses one page section and search snippets. Each fact
+there has a tag. Do a benchmark with real event data before the decision is
+final.
 
 Raw events are append-only, write-heavy and read with aggregate queries
 (count by name, by day). A columnar store is the best fit at scale. For a
@@ -175,13 +178,71 @@ very simple library, the smallest working setup is more important.
 | Postgres | Free; most hosts have it | Good to tens of millions of rows | Familiar. Row store, so large aggregates are slower and use more disk. |
 | NDJSON / Parquet files on object storage (S3, R2) | Cheapest storage | Writes are very cheap; query with DuckDB | No server for storage. Queries are not real-time. |
 
-**Recommendation [unchecked]:**
+### 7.1 Cloudflare options
+
+Cloudflare has three products that can store raw events. The table shows
+only what the pages gave us. "Not checked" means the page text we have does
+not say. Prices come from the D1, Analytics Engine and Basin Pipelines
+pricing pages [source].
+
+| Option | What the page says [source] | Write speed | Free tier | Query from a separate web app |
+| --- | --- | --- | --- | --- |
+| D1 | Billing is by usage: queries count as rows read, rows written, or both. Each indexed insert writes two rows: one to the table and one to the index. Row size does not change the count. | Not checked | Workers Free: 100,000 rows written and 5 million rows read a day, 5 GB storage. Workers Paid: 50 million rows written a month included, then $1.00 per million. Storage: 5 GB included, then $0.75 per GB-month. | Not checked [unchecked: the D1 HTTP API, or a Worker that you write] |
+| Workers Analytics Engine | A time-series and metrics database. It has unlimited-cardinality analytics, a built-in API to write data points from Workers, and a SQL API to read them. It is for per-customer metrics and for instrumentation of code paths that run often. | Not checked | Workers Free: 100,000 data points written and 10,000 read queries a day. Workers Paid: 10 million data points and 1 million read queries a month included. Then $0.25 per million written and $1.00 per million read queries. | Yes: the SQL API reads the data (storage-options page). One SQL API post is one read query. |
+| Pipelines into R2 | Pipelines ingests tens of thousands of records per second or more. It batches records and writes them to object storage, "ready for querying". Billing has two dimensions; the first is the volume of data that SQL transforms process; the second is sink output. Stream ingress is free. | Tens of thousands of records per second or more | Workers Paid only, no free plan. Included each month: 50 GB of SQL transforms and 50 GB of sink output. After that: $0.04 per GB for transforms, and $0.03 per GB (R2 JSON) or $0.06 per GB (Parquet / Iceberg) for sinks. R2 Free: 10 GB-month of Standard Storage and 1 million Class A operations. | Not checked [unchecked: query the files in R2 with an engine such as DuckDB] |
+
+R2 paid rates from the Cloudflare plans page (snippet): Standard Storage
+$0.015 per GB-month, and Standard Class A operations $4.50 per million.
+
+**Cost at 1M and 100M events a month.** We computed these from the rates
+above. They are usage cost only. They do not include the Workers Paid plan
+fee, which we did not read [unchecked]. The event size is our assumption:
+500 bytes for one event. Measure your real size.
+
+| Option | 1M events a month | 100M events a month |
+| --- | --- | --- |
+| D1 (events table + `events_name_ts` index = 2 rows written per event) | 2M rows written: $0 (inside the 50M included). Also fits the Free plan: about 66,000 rows a day, below 100,000. | 200M rows written, 150M billable: $150. With no index, 100M rows written: $50. Storage is extra: 50 GB at 500 bytes, so about 45 GB billable at $0.75 = about $34 after one month, and it grows. |
+| Workers Analytics Engine (one data point per event) | $0 (inside the 10M included). | 90M billable x $0.25 = $22.50. The page says you are not billed for it now, but billing will start. |
+| Pipelines into R2 (JSON sink) | 0.5 GB: $0 (inside the 50 GB included). | 50 GB: $0 for Pipelines, because it is at the included limit. R2 storage: 50 GB x $0.015, less 10 GB free = $0.60 for the first month. At 1 KB per event (100 GB): transforms $2.00 + JSON sink $1.50 = $3.50. R2 Class A operations: not computed; they depend on the file count. |
+
+Notes:
+
+- The D1 numbers use the page rule that an index adds one written row. If
+  the `id` primary key adds an index row too, the count is higher
+  [unchecked].
+- On the Free plan, D1 queries fail when you pass the daily limit (changelog
+  snippet, 2026-09-01). Do not use the Free plan for production events.
+- Analytics Engine counts each `writeDataPoint()` call as one data point.
+  Whether one call can hold a batch is [unchecked].
+- Write speed: none of the pages we read gives a number for D1 or Analytics
+  Engine. Only Pipelines gives one (tens of thousands of records a second).
+
+Points that come from the pages and matter for tinytrack:
+
+- Pipelines and Analytics Engine are for Workers or for a streaming path. A
+  Bun server that runs `POST /events` does not use them without a change.
+  The page says Analytics Engine writes come from Workers [source].
+- Analytics Engine suits counts and metrics. Our `events` table keeps one
+  row per event with an `id` for duplicate removal. Whether Analytics Engine
+  can do that is [unchecked]. It has a fixed layout of blobs, doubles and
+  an index [unchecked], so the table below does not map to it one to one.
+- D1 is the closest fit to the `events` table [unchecked: D1 is built on
+  SQLite], because the schema below can stay the same.
+
+**Recommendation [unchecked in part]:**
 
 1. **v1: SQLite.** One `events` table, inserts in batches, props in a JSON
    column. No extra server, nothing to pay, and fast enough for one machine.
+   The Cloudflare pages we read do not give a reason to change this.
 2. **Keep the event shape flat and ClickHouse-compatible** (see below), so
    a move to ClickHouse later is only an export and an import.
-3. **When one machine is not enough: ClickHouse.** It is the choice of
+3. **If you want to host on Cloudflare: D1 up to about 25M events a
+   month, then Pipelines into R2.** D1 keeps the same schema and costs $0
+   up to 25M events a month with one index (50M rows written included). At
+   100M events it costs about $150, against about $0 to $4 for Pipelines.
+   Use Analytics Engine only if you accept aggregate metrics instead of raw
+   rows. Pipelines needs a query engine for the R2 files [unchecked].
+4. **When one machine is not enough: ClickHouse.** It is the choice of
    Plausible and PostHog for the same data.
 
 Proposed `events` table:
@@ -274,4 +335,21 @@ CREATE INDEX events_name_ts ON events (name, ts);
   https://trackkit.enkosiventures.com/overview/architecture
 - TinyTrack custom events, an existing product with the same name
   (snippet only): https://docs.tinytrack.io/tracking/custom-events
-- No page was read for posthog-js, Aptabase or the database comparison.
+- Cloudflare, "Choosing a data or storage product", sections "Basin
+  Pipelines", "Analytics Engine" and "Vectorize" (read):
+  https://developers.cloudflare.com/workers/platform/storage-options/
+- Cloudflare D1 pricing, section "Billing metrics" (read):
+  https://developers.cloudflare.com/d1/platform/pricing/
+- Workers Analytics Engine pricing (read):
+  https://developers.cloudflare.com/analytics/analytics-engine/pricing/
+- D1 free tier limit enforcement, changelog (snippet only):
+  https://developers.cloudflare.com/changelog/post/2026-09-01-d1-free-tier-limit-enforcement/
+- Cloudflare D1 limits (snippet only, not used for a fact yet):
+  https://developers.cloudflare.com/d1/platform/limits/
+- Basin Pipelines pricing (read):
+  https://developers.cloudflare.com/basin-pipelines/platform/pricing/
+- Cloudflare plans, R2 rates (snippet only): https://www.cloudflare.com/plans/
+- Cloudflare Workers pricing (snippet only, not used for a fact yet):
+  https://developers.cloudflare.com/workers/platform/pricing/
+- No page was read for posthog-js, Aptabase or the self-hosted database
+  options (SQLite, DuckDB, ClickHouse, Postgres).

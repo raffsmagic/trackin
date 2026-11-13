@@ -1,5 +1,5 @@
 {
-  "name": "tinytrack",
+  "name": "trackin",
   "version": "0.1.0",
   "description": "A very simple event tracking library for the browser, Node/Bun servers and React Native.",
   "type": "module",
@@ -15,10 +15,15 @@
     "test": "bun test",
     "server": "bun run src/server.ts",
     "build": "bun run scripts/build.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "worker:dev": "wrangler dev",
+    "worker:deploy": "wrangler deploy",
+    "worker:migrate:local": "wrangler d1 migrations apply trackin --local",
+    "worker:migrate": "wrangler d1 migrations apply trackin --remote"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "wrangler": "^4.161.0"
   }
 }

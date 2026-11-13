@@ -1,4 +1,4 @@
-// tinytrack core: make the event, check the gate, run beforeSend,
+// trackin core: make the event, check the gate, run beforeSend,
 // put the event in a queue and send batches through a transport.
 // Plain TypeScript, no dependencies, no platform APIs except fetch/timers.
 
@@ -64,7 +64,7 @@ export function fetchTransport(endpoint: string, init?: RequestInit): Transport 
       body: JSON.stringify(events),
       ...init,
     });
-    if (!res.ok) throw new Error(`tinytrack: POST ${endpoint} failed with ${res.status}`);
+    if (!res.ok) throw new Error(`trackin: POST ${endpoint} failed with ${res.status}`);
   };
 }
 
@@ -81,7 +81,7 @@ export function createTracker(options: TrackerOptions): Tracker {
   const transport =
     options.transport ??
     (options.endpoint ? fetchTransport(options.endpoint) : undefined);
-  if (!transport) throw new Error("tinytrack: give an endpoint or a transport");
+  if (!transport) throw new Error("trackin: give an endpoint or a transport");
 
   const sessionId = randomId();
   let queue: TrackEvent[] = [];
