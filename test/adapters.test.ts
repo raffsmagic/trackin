@@ -40,3 +40,14 @@ test("react-native entry flushes when the app goes to the background", async () 
   expect(sent.map((e) => e.name)).toEqual(["screen"]);
   expect(sent[0].source).toBe("react-native");
 });
+
+test("react-native init removes the AppState listener of the previous init", async () => {
+  const { transport } = recorder();
+  let removed = 0;
+  const appState = {
+    addEventListener: () => ({ remove: () => removed++ }),
+  };
+  rn.init({ transport, appState, flushInterval: 0 });
+  rn.init({ transport, appState, flushInterval: 0 });
+  expect(removed).toBe(1);
+});

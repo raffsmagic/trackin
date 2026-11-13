@@ -7,8 +7,12 @@ export * from "./core.ts";
 export { track, flush, shutdown } from "./default.ts";
 
 export interface AppStateLike {
+  /** React Native returns a subscription with remove(). */
   addEventListener(type: "change", listener: (state: string) => void): unknown;
 }
+
+/** The current AppState subscription. init() removes it before it adds a new one. */
+let subscription: { remove?: () => void } | undefined;
 
 export interface ReactNativeOptions extends TrackerOptions {
   appState?: AppStateLike;
@@ -16,8 +20,9 @@ export interface ReactNativeOptions extends TrackerOptions {
 
 export function init({ appState, ...options }: ReactNativeOptions): Tracker {
   const tracker = initDefault({ source: "react-native", ...options });
-  appState?.addEventListener("change", (state) => {
+  subscription?.remove?.();
+  subscription = appState?.addEventListener("change", (state) => {
     if (state === "background" || state === "inactive") void tracker.flush();
-  });
+  }) as typeof subscription;
   return tracker;
 }
