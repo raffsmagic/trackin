@@ -1,0 +1,24 @@
+{
+  "name": "tinytrack",
+  "version": "0.1.0",
+  "description": "A very simple event tracking library for the browser, Node/Bun servers and React Native.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/core.ts",
+    "./browser": "./src/browser.ts",
+    "./node": "./src/node.ts",
+    "./react-native": "./src/react-native.ts",
+    "./server": "./src/server.ts"
+  },
+  "scripts": {
+    "test": "bun test",
+    "server": "bun run src/server.ts",
+    "build": "bun run scripts/build.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}
