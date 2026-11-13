@@ -1,10 +1,10 @@
-# tinytrack: research notes
+# trackin: research notes
 
-tinytrack is a very simple event tracking library for TypeScript.
+trackin is a very simple event tracking library for TypeScript.
 Targets: the browser, Node and Bun servers, and React Native.
 
 This file records how other tools do event tracking, which database to use
-for raw events, and what tinytrack will NOT do.
+for raw events, and what trackin will NOT do.
 
 ## How to read this file
 
@@ -16,9 +16,9 @@ Only one page was read in full: the "Design goals" section of Plausible's
 `tracker/ARCHITECTURE.md`. For all other tools, we only have search snippets
 or memory. Read the pages in "Sources" before the design is final.
 
-> **Name collision:** a product named TinyTrack already exists, with docs at
-> https://docs.tinytrack.io/tracking/custom-events [source]. Think about this
-> before you publish a package with the name `tinytrack`.
+> **Name:** the project was first called tinytrack. A product named TinyTrack
+> already exists (https://docs.tinytrack.io/tracking/custom-events [source]),
+> so it was renamed to trackin.
 
 ---
 
@@ -53,7 +53,7 @@ Other details [unchecked]:
 - The backend is an Elixir/Phoenix monolith with Postgres for application
   data [source, snippet]. Events go into ClickHouse [unchecked].
 
-**Lessons for tinytrack:**
+**Lessons for trackin:**
 
 - Keep the browser bundle very small, and measure its size in CI.
 - One core, small adapters for each target. Do not copy the variant
@@ -78,7 +78,7 @@ Other details [unchecked]:
 - The JS API is `umami.track(name, data)`.
 - Storage: Postgres or MySQL, with ClickHouse as an option for large sites.
 
-**Lessons for tinytrack:**
+**Lessons for trackin:**
 
 - `track(name, props)` is the full public API that most users need.
 - A "do not send on these domains / on localhost" check is cheap and useful.
@@ -97,7 +97,7 @@ We did not read a page about PostHog. All of this section is [unchecked].
   You must call `shutdown()` before the process stops, or events are lost.
 - Events go into ClickHouse.
 
-**Lessons for tinytrack:**
+**Lessons for trackin:**
 
 - The server SDK pattern is correct: batch by count or by time, and
   `flush()` / `shutdown()` before exit.
@@ -120,7 +120,7 @@ Other details [unchecked]:
   and `flushInterval`, and `closeAndFlush()` at shutdown.
 - Each event has a `messageId`, so the server can remove duplicates.
 
-**Lessons for tinytrack:**
+**Lessons for trackin:**
 
 - Give each event a client-side id, so retries do not make duplicates.
 - One `POST /events` endpoint that accepts an array is enough for all
@@ -142,9 +142,9 @@ We did not read a page about Aptabase. All of this section is [unchecked].
   locale, SDK version, and a debug or release flag.
 - Events go into a ClickHouse-based store.
 
-**Lessons for tinytrack:**
+**Lessons for trackin:**
 
-- This is the closest model to tinytrack: two functions, an in-memory
+- This is the closest model to trackin: two functions, an in-memory
   session id, no cookies, system properties added by the adapter.
 
 ## 6. Other useful reference: Trackkit
@@ -153,7 +153,7 @@ What the snippet says [source, snippet]: Trackkit has a facade (an instance
 or a singleton) in front of a pipeline: a PolicyGate (DNT, domain/paths,
 localhost), a ConsentManager, then a QueueService.
 
-**Lesson for tinytrack:** a small "gate, then queue, then transport"
+**Lesson for trackin:** a small "gate, then queue, then transport"
 pipeline is a clean shape for the core.
 
 ---
@@ -217,7 +217,7 @@ Notes:
 - Write speed: none of the pages we read gives a number for D1 or Analytics
   Engine. Only Pipelines gives one (tens of thousands of records a second).
 
-Points that come from the pages and matter for tinytrack:
+Points that come from the pages and matter for trackin:
 
 - Pipelines and Analytics Engine are for Workers or for a streaming path. A
   Bun server that runs `POST /events` does not use them without a change.
@@ -262,7 +262,7 @@ CREATE INDEX events_name_ts ON events (name, ts);
 
 ---
 
-## 8. What tinytrack will do (summary)
+## 8. What trackin will do (summary)
 
 - Public API: `init({ endpoint, transport?, beforeSend?, batchSize?,
   flushInterval?, maxQueue?, disabled? })`, `track(name, props?)`,
@@ -286,7 +286,7 @@ CREATE INDEX events_name_ts ON events (name, ts);
 - A random session id in memory only.
 - A size limit for the browser bundle, checked in CI.
 
-## 9. What tinytrack will NOT do
+## 9. What trackin will NOT do
 
 - **No autocapture.** We do not record clicks, inputs or page views
   automatically. The user calls `track()`.
@@ -312,9 +312,10 @@ CREATE INDEX events_name_ts ON events (name, ts);
 
 ## 10. Open questions
 
-- ~~Does tinytrack include the ingest server, or only the client SDKs?~~
+- ~~Does trackin include the ingest server, or only the client SDKs?~~
   Yes: v1 includes a small Bun server for `POST /events`.
-- Is the `tinytrack` name free on npm, given the existing TinyTrack product?
+- ~~Is the `tinytrack` name free on npm, given the existing TinyTrack product?~~
+  Renamed to trackin; `trackin` was free on npm in November 2026.
 - Must the browser adapter respect Do Not Track by default?
 - What is the size limit for the browser bundle (for example 1 kB gzip)?
 
@@ -333,7 +334,7 @@ CREATE INDEX events_name_ts ON events (name, ts);
   https://stackoptic.com/technologies/analytics/segment
 - Trackkit architecture (snippet only):
   https://trackkit.enkosiventures.com/overview/architecture
-- TinyTrack custom events, an existing product with the same name
+- TinyTrack custom events, an existing product with the old name
   (snippet only): https://docs.tinytrack.io/tracking/custom-events
 - Cloudflare, "Choosing a data or storage product", sections "Basin
   Pipelines", "Analytics Engine" and "Vectorize" (read):
