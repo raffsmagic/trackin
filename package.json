@@ -1,6 +1,6 @@
 {
   "name": "trackin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Tiny event tracking for the browser, Node/Bun and React Native. No cookies, no fingerprinting, no dependencies.",
   "type": "module",
   "license": "MIT",
@@ -57,6 +57,9 @@
       "default": "./dist/worker.js"
     },
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "trackin": "dist/server.js"
   },
   "files": [
     "dist",

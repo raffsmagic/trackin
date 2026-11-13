@@ -1,5 +1,6 @@
+#!/usr/bin/env bun
 // Ingest server for Bun: POST /events with a JSON array of events.
-// Writes to SQLite with bun:sqlite. Run: bun run src/server.ts
+// Writes to SQLite with bun:sqlite. Run: bun run src/server.ts, or bunx trackin.
 // This is the self-hosted option. src/worker.ts is the Cloudflare Worker option.
 import { Database } from "bun:sqlite";
 import { handleIngest, INSERT_SQL, MAX_BODY_BYTES, rowValues, type Row } from "./ingest.ts";
@@ -33,10 +34,11 @@ export function createHandler(db: Database) {
     });
 }
 
-export function startServer(options: { port?: number; db?: Database | string } = {}) {
+export function startServer(options: { port?: number; hostname?: string; db?: Database | string } = {}) {
   const db = typeof options.db === "object" ? options.db : openDatabase(options.db);
   const server = Bun.serve({
     port: options.port ?? 3000,
+    hostname: options.hostname,
     maxRequestBodySize: MAX_BODY_BYTES,
     fetch: createHandler(db),
   });
@@ -46,6 +48,7 @@ export function startServer(options: { port?: number; db?: Database | string } =
 if (import.meta.main) {
   const { server } = startServer({
     port: Number(process.env.PORT ?? 3000),
+    hostname: process.env.HOST,
     db: process.env.DB_PATH ?? "trackin.sqlite",
   });
   console.log(`trackin: listening on ${server.url}events`);

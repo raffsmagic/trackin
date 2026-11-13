@@ -2,7 +2,9 @@
 
 A tiny event tracking library in TypeScript, for the browser, Node and Bun servers, and React Native. It has no dependencies, and the browser bundle is about 1.4 KB gzip.
 
-You call `track("signup_clicked", { plan: "pro" })`. trackin gives the event a client-side id, puts it in a queue and sends batches to `POST /events` on your server. You run that server yourself: a Bun server that writes to SQLite, or a Cloudflare Worker that writes to D1.
+You call `track("signup_clicked", { plan: "pro" })`. trackin gives the event a client-side id, puts it in a queue and sends batches to `POST /events` on your server.
+
+**You host everything yourself.** There is no trackin cloud service and no shared endpoint. Your events go only to a server you run: a Bun server that writes to SQLite (one command, or Docker), or a Cloudflare Worker in your own Cloudflare account that writes to D1. See [Self-hosting](#self-hosting).
 
 ## What trackin does not do
 
@@ -12,6 +14,7 @@ You call `track("signup_clicked", { plan: "pro" })`. trackin gives the event a c
 - No session replay, heatmaps, feature flags or experiments.
 - No IP address, user agent or GeoIP is stored. The server stores only the fields in the event.
 - No offline storage. Events that are not sent when the page or process stops are lost.
+- No hosted service, accounts or billing. You run the server.
 - No dashboard. Query the `events` table with SQL.
 
 ## Install
@@ -96,35 +99,38 @@ The client sends a JSON array of events:
 
 Props are a flat object of strings, numbers, booleans and `null`. A failed send is retried with the same ids, and the server ignores ids it already has, so a retry does not make duplicates.
 
-## Server
+## Self-hosting
 
-Both servers accept `POST /events`. They use the same validation from `trackin/ingest` and the same `events` table:
+Pick one way to run the ingest server. Then give its URL as `endpoint` in `init()`.
 
-| column       | type    |                                   |
-| ------------ | ------- | --------------------------------- |
-| `id`         | TEXT    | primary key, from the client      |
-| `ts`         | INTEGER | ms since epoch, from the client   |
-| `received`   | INTEGER | ms since epoch, from the server   |
-| `name`       | TEXT    |                                   |
-| `session_id` | TEXT    |                                   |
-| `source`     | TEXT    |                                   |
-| `props`      | TEXT    | JSON                              |
+### Bun server with one command
 
-Limits: 64 KB per request, 100 events per request, names up to 200 characters, props up to 2 KB of JSON, session ids up to 64 characters, and `ts` from 30 days ago to one day ahead. A request that is too large gets `413`. Events that are not valid are skipped, and the answer says how many: `{ "accepted": 3, "rejected": 1 }`.
+You need [Bun](https://bun.sh).
 
-> **The endpoint is open.** There are no API keys yet, and CORS allows any origin. Anyone who knows the URL can send events to it. Keep this in mind before you use it in production.
+```sh
+bunx trackin
+```
 
-### Bun (self-hosted)
+The server listens on port `3000` and writes to `trackin.sqlite` in the current folder. Environment variables:
+
+- `PORT`: the port. Default `3000`.
+- `HOST`: the address to listen on, for example `127.0.0.1` behind a reverse proxy. Default all addresses.
+- `DB_PATH`: the SQLite file. Default `trackin.sqlite`.
+
+Put it behind HTTPS (for example Caddy or nginx) before browsers send to it.
+
+### Docker
 
 From a clone of this repository:
 
 ```sh
-bun run server
+docker build -t trackin .
+docker run -d -p 3000:3000 -v trackin-data:/data trackin
 ```
 
-The server listens on port `3000`. Set `PORT` to change it. Set `DB_PATH` to choose the SQLite file (default `trackin.sqlite`).
+The database is `/data/trackin.sqlite` in the `trackin-data` volume.
 
-Or from the package, in your own Bun program:
+### Inside your own Bun program
 
 ```ts
 import { startServer } from "trackin/server";
@@ -132,9 +138,9 @@ import { startServer } from "trackin/server";
 startServer({ port: 3000, db: "trackin.sqlite" });
 ```
 
-`trackin/server` uses `bun:sqlite`, so it runs on Bun only.
+`trackin/server` and `bunx trackin` use `bun:sqlite`, so they run on Bun only.
 
-### Cloudflare Worker
+### Cloudflare Worker in your own account
 
 The Worker is `src/worker.ts`. The migration `migrations/0000_create_events_table.sql` creates the `events` table in D1. From a clone of this repository:
 
@@ -152,10 +158,29 @@ In your own Worker project, you can use the package instead: `export { default }
 
 `handleIngest(request, write)` from `trackin/ingest` validates a request and calls `write(rows, received)` with the valid rows. Use it to write to another database.
 
+### What the server stores and accepts
+
+Every server takes `POST /events` with the same validation from `trackin/ingest`, and writes the same `events` table:
+
+| column       | type    |                                   |
+| ------------ | ------- | --------------------------------- |
+| `id`         | TEXT    | primary key, from the client      |
+| `ts`         | INTEGER | ms since epoch, from the client   |
+| `received`   | INTEGER | ms since epoch, from the server   |
+| `name`       | TEXT    |                                   |
+| `session_id` | TEXT    |                                   |
+| `source`     | TEXT    |                                   |
+| `props`      | TEXT    | JSON                              |
+
+Limits: 64 KB per request, 100 events per request, names up to 200 characters, props up to 2 KB of JSON, session ids up to 64 characters, and `ts` from 30 days ago to one day ahead. A request that is too large gets `413`. Events that are not valid are skipped, and the answer says how many: `{ "accepted": 3, "rejected": 1 }`.
+
+> **Your endpoint has no authentication.** CORS allows any origin, and anyone who knows its URL can send events to it. That is normal for a browser analytics endpoint, since the URL is in your page anyway, but watch your database size, and use `HOST` and a reverse proxy to limit who can reach it.
+
 ## Development
 
 - `bun test` runs the tests.
 - `bun run typecheck` checks the types.
+- `bun run server` runs the Bun server from source.
 - `bun run build` builds `dist/` for npm.
 - `bun run size` bundles the browser entry, prints its gzip size, and fails above 1.5 KB gzip.
 - `bun run scripts/demo.ts` starts a server, sends events and prints the rows.

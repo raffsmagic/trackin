@@ -21,3 +21,18 @@ jobs:
       - run: bun test
       - run: bun run size
       - run: npm pack --dry-run
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t trackin .
+      - run: docker run -d --name trackin -p 3000:3000 trackin
+      - name: POST /events answers
+        run: |
+          for i in $(seq 1 20); do
+            curl -sf -X POST --data '[]' http://localhost:3000/events && exit 0
+            sleep 1
+          done
+          docker logs trackin
+          exit 1
