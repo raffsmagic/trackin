@@ -1,5 +1,5 @@
 {
-  // Cloudflare Worker for POST /events. See "Cloudflare Worker" in README.md.
+  // Copy this file to wrangler.jsonc and set database_id. See "Cloudflare Worker" in README.md.
   "name": "trackin",
   "main": "src/worker.ts",
   "compatibility_date": "2026-11-01",
@@ -7,7 +7,7 @@
     {
       "binding": "DB",
       "database_name": "trackin",
-      "database_id": "aadb1347-5643-4c12-9f85-b78b0cfdc2c2",
+      "database_id": "<your-database-id>",
       "migrations_dir": "migrations"
     }
   ]
