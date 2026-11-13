@@ -120,6 +120,14 @@ export async function handleIngest(
 
   const now = Date.now();
   const rows = body.map((e) => toRow(e, now)).filter((r): r is Row => r !== null);
-  if (rows.length > 0) await write(rows, now);
+  if (rows.length > 0) {
+    try {
+      await write(rows, now);
+    } catch (error) {
+      // Answer with CORS headers, so a browser client sees the 500 and retries.
+      console.error("trackin: write failed", error);
+      return json({ error: "could not store the events" }, 500);
+    }
+  }
   return json({ accepted: rows.length, rejected: body.length - rows.length });
 }

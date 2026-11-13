@@ -121,6 +121,22 @@ describe("Worker POST /events", () => {
     expect(pulls).toBeLessThan(10);
   });
 
+  test("answers 500 with CORS headers when the database write fails", async () => {
+    const failing: Env = { DB: { prepare: () => ({ bind: () => ({}) as never }), batch: async () => { throw new Error("D1 down"); } } as never };
+    const original = console.error;
+    console.error = () => {};
+    try {
+      const res = await worker.fetch(
+        new Request("https://worker.example/events", { method: "POST", body: JSON.stringify([event()]) }),
+        failing,
+      );
+      expect(res.status).toBe(500);
+      expect(res.headers.get("access-control-allow-origin")).toBe("*");
+    } finally {
+      console.error = original;
+    }
+  });
+
   test("rejects more than 100 events", async () => {
     expect((await post(Array.from({ length: 101 }, () => event()))).status).toBe(413);
     expect((await post(Array.from({ length: 100 }, () => event()))).status).toBe(200);
