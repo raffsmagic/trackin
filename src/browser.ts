@@ -1,6 +1,6 @@
 // Browser entry. Uses sendBeacon (or fetch with keepalive) and flushes
 // when the page becomes hidden.
-import type { Tracker, TrackerOptions, Transport } from "./core.ts";
+import { SendError, type Tracker, type TrackerOptions, type Transport } from "./core.ts";
 import { initDefault } from "./default.ts";
 
 export * from "./core.ts";
@@ -20,7 +20,7 @@ export function beaconTransport(endpoint: string): Transport {
       body,
       keepalive: true,
     });
-    if (!res.ok) throw new Error(`trackin: POST ${endpoint} failed with ${res.status}`);
+    if (!res.ok) throw new SendError(`trackin: POST ${endpoint} failed with ${res.status}`, res.status);
   };
 }
 

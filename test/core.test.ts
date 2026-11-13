@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { createTracker, randomId, type TrackEvent, type Transport } from "../src/core.ts";
+import { createTracker, randomId, SendError, type TrackEvent, type Transport } from "../src/core.ts";
 
 function recorder() {
   const batches: TrackEvent[][] = [];
@@ -137,6 +137,69 @@ describe("createTracker", () => {
     expect(sent.flat().map((e) => e.name)).toEqual(["a", "b"]);
   });
 
+  test("a 4xx answer drops the batch and sends the next one", async () => {
+    const sent: string[] = [];
+    const errors: unknown[] = [];
+    let calls = 0;
+    const t = createTracker({
+      flushInterval: 0,
+      batchSize: 1,
+      onError: (e) => errors.push(e),
+      transport: async (events) => {
+        if (calls++ === 0) throw new SendError("bad request", 400);
+        sent.push(...events.map((e) => e.name));
+      },
+    });
+    t.track("a");
+    t.track("b");
+    await t.flush();
+    expect(errors).toHaveLength(1);
+    expect(sent).toEqual(["b"]);
+  });
+
+  test("a 5xx or 429 answer keeps the batch", async () => {
+    for (const status of [500, 429]) {
+      const errors: unknown[] = [];
+      let fail = true;
+      const sent: string[] = [];
+      const t = createTracker({
+        flushInterval: 0,
+        onError: (e) => errors.push(e),
+        transport: async (events) => {
+          if (fail) throw new SendError("try later", status);
+          sent.push(...events.map((e) => e.name));
+        },
+      });
+      t.track("a");
+      await t.flush();
+      fail = false;
+      await t.flush();
+      expect(errors).toHaveLength(1);
+      expect(sent).toEqual(["a"]);
+    }
+  });
+
+  test("a batch stays under 60 KB of JSON", async () => {
+    const { batches, transport } = recorder();
+    const t = createTracker({ transport, batchSize: 100, flushInterval: 0 });
+    for (let i = 0; i < 100; i++) t.track("big", { text: "x".repeat(2000) });
+    await t.flush();
+    expect(batches.length).toBeGreaterThan(1);
+    expect(batches.flat()).toHaveLength(100);
+    for (const b of batches) expect(new TextEncoder().encode(JSON.stringify(b)).length).toBeLessThanOrEqual(60 * 1024);
+  });
+
+  test("an event over 60 KB by itself is dropped with onError", async () => {
+    const { batches, transport } = recorder();
+    const errors: unknown[] = [];
+    const t = createTracker({ transport, flushInterval: 0, onError: (e) => errors.push(e) });
+    t.track("huge", { text: "x".repeat(70 * 1024) });
+    t.track("small");
+    await t.flush();
+    expect(errors).toHaveLength(1);
+    expect(batches.flat().map((e) => e.name)).toEqual(["small"]);
+  });
+
   test("maxQueue drops the oldest events", async () => {
     const { batches, transport } = recorder();
     const t = createTracker({ transport, maxQueue: 2, batchSize: 100, flushInterval: 0 });
@@ -186,7 +249,7 @@ describe("randomId", () => {
     // @ts-expect-error remove it to act like React Native
     globalThis.crypto.randomUUID = undefined;
     try {
-      expect(randomId()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+      expect(randomId()).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
     } finally {
       globalThis.crypto.randomUUID = original;
     }
