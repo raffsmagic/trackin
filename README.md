@@ -20,7 +20,7 @@ You call `track("signup_clicked", { plan: "pro" })`. trackin gives the event a c
 npm install trackin
 ```
 
-trackin is an ES module package. It needs `fetch`, which browsers, Node 18+, Bun and React Native have.
+trackin is an ES module package. It needs `fetch`, which browsers, Node 18+, Bun and React Native have. For TypeScript, use `"moduleResolution": "bundler"`, `"node16"` or `"nodenext"`, so the `trackin/…` imports resolve.
 
 ## Browser
 
@@ -58,6 +58,8 @@ track("screen_view", { name: "Home" });
 ```
 
 Pass `AppState` so the library flushes when the app goes to the background. trackin does not import `react-native` itself.
+
+The `trackin/react-native` import needs package `exports` support in Metro. It is on by default in React Native 0.79 and later. For older versions, set `resolver.unstable_enablePackageExports = true` in `metro.config.js`.
 
 ## More than one tracker
 
@@ -155,7 +157,7 @@ In your own Worker project, you can use the package instead: `export { default }
 - `bun test` runs the tests.
 - `bun run typecheck` checks the types.
 - `bun run build` builds `dist/` for npm.
-- `bun run size` bundles the browser entry and prints its gzip size.
+- `bun run size` bundles the browser entry, prints its gzip size, and fails above 1.5 KB gzip.
 - `bun run scripts/demo.ts` starts a server, sends events and prints the rows.
 - `bun run scripts/send.ts <endpoint>` sends three events to an endpoint.
 - `bun run worker:dev` runs the Cloudflare Worker on your computer with `wrangler dev`.
@@ -163,6 +165,8 @@ In your own Worker project, you can use the package instead: `export { default }
 - `bun run worker:migrate` and `bun run worker:migrate:local` apply the D1 migrations on Cloudflare and on your computer.
 
 To change the table, add a new migration with `bunx wrangler d1 migrations create trackin <MESSAGE>`. Make the same change in `openDatabase()` in `src/server.ts`.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) to help.
 
 ## License
 

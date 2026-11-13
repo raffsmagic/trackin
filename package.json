@@ -4,8 +4,21 @@
   "description": "Tiny event tracking for the browser, Node/Bun and React Native. No cookies, no fingerprinting, no dependencies.",
   "type": "module",
   "license": "MIT",
-  "keywords": [],
+  "keywords": [
+    "analytics",
+    "tracking",
+    "events",
+    "privacy",
+    "sendbeacon",
+    "react-native",
+    "cloudflare-workers",
+    "d1",
+    "bun"
+  ],
   "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
   "exports": {
     ".": {
       "types": "./dist/core.d.ts",
