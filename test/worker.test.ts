@@ -107,6 +107,20 @@ describe("Worker POST /events", () => {
     expect((await post("x".repeat(64 * 1024 + 1))).status).toBe(413);
   });
 
+  test("rejects a streamed body with no content-length once it passes 64 KB", async () => {
+    let pulls = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulls++;
+        controller.enqueue(new Uint8Array(16 * 1024).fill(32));
+      },
+    });
+    const req = new Request("https://example.com/events", { method: "POST", body, duplex: "half" } as RequestInit);
+    expect(req.headers.get("content-length")).toBeNull();
+    expect((await worker.fetch(req, env)).status).toBe(413);
+    expect(pulls).toBeLessThan(10);
+  });
+
   test("rejects more than 100 events", async () => {
     expect((await post(Array.from({ length: 101 }, () => event()))).status).toBe(413);
     expect((await post(Array.from({ length: 100 }, () => event()))).status).toBe(200);

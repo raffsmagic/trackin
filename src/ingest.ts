@@ -58,6 +58,35 @@ export function toRow(e: unknown, now: number = Date.now()): Row | null {
   };
 }
 
+/**
+ * Reads the body as text, but stops at MAX_BODY_BYTES. A chunked request has no
+ * content-length, and req.text() would read all of it into memory first.
+ * Returns null when the body is too large.
+ */
+async function readText(req: Request): Promise<string | null> {
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_BODY_BYTES) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const c of chunks) {
+    bytes.set(c, offset);
+    offset += c.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
 const json = (body: unknown, status = 200) => Response.json(body, { status, headers: CORS });
 
 /**
@@ -77,8 +106,8 @@ export async function handleIngest(
   if (Number(req.headers.get("content-length") ?? 0) > MAX_BODY_BYTES) return tooLarge();
 
   // Read as text: sendBeacon sends text/plain.
-  const text = await req.text();
-  if (new TextEncoder().encode(text).length > MAX_BODY_BYTES) return tooLarge();
+  const text = await readText(req);
+  if (text === null) return tooLarge();
 
   let body: unknown;
   try {
