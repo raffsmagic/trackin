@@ -1,21 +1,53 @@
 {
   "name": "trackin",
-  "version": "0.1.0",
-  "description": "A very simple event tracking library for the browser, Node/Bun servers and React Native.",
+  "version": "0.0.1",
+  "description": "Tiny event tracking for the browser, Node/Bun and React Native. No cookies, no fingerprinting, no dependencies.",
   "type": "module",
   "license": "MIT",
+  "keywords": [],
+  "sideEffects": false,
   "exports": {
-    ".": "./src/core.ts",
-    "./browser": "./src/browser.ts",
-    "./node": "./src/node.ts",
-    "./react-native": "./src/react-native.ts",
-    "./server": "./src/server.ts"
+    ".": {
+      "types": "./dist/core.d.ts",
+      "default": "./dist/core.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "default": "./dist/browser.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
+    },
+    "./react-native": {
+      "types": "./dist/react-native.d.ts",
+      "default": "./dist/react-native.js"
+    },
+    "./ingest": {
+      "types": "./dist/ingest.d.ts",
+      "default": "./dist/ingest.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "default": "./dist/server.js"
+    },
+    "./worker": {
+      "types": "./dist/worker.d.ts",
+      "default": "./dist/worker.js"
+    },
+    "./package.json": "./package.json"
   },
+  "files": [
+    "dist",
+    "migrations"
+  ],
   "scripts": {
     "test": "bun test",
-    "server": "bun run src/server.ts",
-    "build": "bun run scripts/build.ts",
     "typecheck": "tsc --noEmit",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json",
+    "size": "bun run scripts/build.ts",
+    "prepack": "bun run build",
+    "server": "bun run src/server.ts",
     "worker:dev": "wrangler dev",
     "worker:deploy": "wrangler deploy",
     "worker:migrate:local": "wrangler d1 migrations apply trackin --local",
