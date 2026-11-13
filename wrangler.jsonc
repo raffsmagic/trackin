@@ -7,8 +7,7 @@
     {
       "binding": "DB",
       "database_name": "trackin",
-      // Run `bunx wrangler d1 create trackin` and put the database_id it prints here.
-      "database_id": "REPLACE_WITH_YOUR_DATABASE_ID",
+      "database_id": "aadb1347-5643-4c12-9f85-b78b0cfdc2c2",
       "migrations_dir": "migrations"
     }
   ]
