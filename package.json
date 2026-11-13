@@ -4,6 +4,14 @@
   "description": "Tiny event tracking for the browser, Node/Bun and React Native. No cookies, no fingerprinting, no dependencies.",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/raffsmagic/trackin.git"
+  },
+  "homepage": "https://github.com/raffsmagic/trackin#readme",
+  "bugs": {
+    "url": "https://github.com/raffsmagic/trackin/issues"
+  },
   "keywords": [
     "analytics",
     "tracking",
