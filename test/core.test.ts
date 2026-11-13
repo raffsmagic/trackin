@@ -54,6 +54,16 @@ describe("createTracker", () => {
     expect(batches.map((b) => b.length)).toEqual([2, 2, 1]);
   });
 
+  test("batchSize is capped at 100", async () => {
+    const { batches, transport } = recorder();
+    const t = createTracker({ transport, batchSize: 500, maxQueue: 1000, flushInterval: 0 });
+    for (let i = 0; i < 101; i++) t.track(`e${i}`);
+    await t.flush();
+    expect(batches.length).toBeGreaterThan(0);
+    expect(Math.max(...batches.map((b) => b.length))).toBeLessThanOrEqual(100);
+    expect(batches.flat().length).toBe(101);
+  });
+
   test("sends on the timer", async () => {
     const { batches, transport } = recorder();
     const t = createTracker({ transport, flushInterval: 20 });

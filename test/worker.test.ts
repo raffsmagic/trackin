@@ -47,7 +47,7 @@ afterEach(() => db.close());
 
 const event = (over: Record<string, unknown> = {}) => ({
   id: crypto.randomUUID(),
-  ts: 1700000000000,
+  ts: Date.now(),
   name: "signup",
   session_id: "s1",
   source: "browser",
@@ -104,7 +104,12 @@ describe("Worker POST /events", () => {
   test("rejects a body that is not an array or is too large", async () => {
     expect((await post(event())).status).toBe(400);
     expect((await post("not json")).status).toBe(400);
-    expect((await post("x".repeat(1024 * 1024 + 1))).status).toBe(413);
+    expect((await post("x".repeat(64 * 1024 + 1))).status).toBe(413);
+  });
+
+  test("rejects more than 100 events", async () => {
+    expect((await post(Array.from({ length: 101 }, () => event()))).status).toBe(413);
+    expect((await post(Array.from({ length: 100 }, () => event()))).status).toBe(200);
   });
 
   test("returns 404, 405 and answers the CORS preflight", async () => {

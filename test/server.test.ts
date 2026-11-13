@@ -17,9 +17,12 @@ afterEach(() => {
   db.close();
 });
 
+const FIXED_TS = Date.now();
+const DAY = 24 * 60 * 60 * 1000;
+
 const event = (over: Record<string, unknown> = {}) => ({
   id: crypto.randomUUID(),
-  ts: 1700000000000,
+  ts: FIXED_TS,
   name: "signup",
   session_id: "s1",
   source: "browser",
@@ -44,7 +47,7 @@ describe("POST /events", () => {
     expect(rows[0].name).toBe("login");
     expect(rows[0].props).toBeNull();
     expect(rows[1].props).toBe('{"plan":"pro"}');
-    expect(rows[1].ts).toBe(1700000000000);
+    expect(rows[1].ts).toBe(FIXED_TS);
     expect(typeof rows[1].received).toBe("number");
   });
 
@@ -64,6 +67,38 @@ describe("POST /events", () => {
   test("skips events that are not valid", async () => {
     const res = await post([event(), event({ source: "tv" }), { name: "x" }, event({ props: [1] })]);
     expect(await res.json()).toEqual({ accepted: 1, rejected: 3 });
+  });
+
+  test("rejects more than 100 events", async () => {
+    expect((await post(Array.from({ length: 101 }, () => event()))).status).toBe(413);
+    expect((await post(Array.from({ length: 100 }, () => event()))).status).toBe(200);
+  });
+
+  test("rejects a body larger than 64 KB", async () => {
+    expect((await post("x".repeat(64 * 1024 + 1))).status).toBe(413);
+  });
+
+  test("skips an event with props over 2 KB", async () => {
+    const big = { s: "x".repeat(2048) };
+    const ok = { s: "x".repeat(2048 - 8) };
+    const res = await post([event({ props: big }), event({ props: ok })]);
+    expect(await res.json()).toEqual({ accepted: 1, rejected: 1 });
+  });
+
+  test("skips an event with a session_id over 64 chars", async () => {
+    const res = await post([event({ session_id: "s".repeat(65) }), event({ session_id: "s".repeat(64) })]);
+    expect(await res.json()).toEqual({ accepted: 1, rejected: 1 });
+  });
+
+  test("skips an event with ts over a day ahead or over 30 days old", async () => {
+    const now = Date.now();
+    const res = await post([
+      event({ ts: now + DAY + 60_000 }),
+      event({ ts: now - 30 * DAY - 60_000 }),
+      event({ ts: now + DAY - 60_000 }),
+      event({ ts: now - 30 * DAY + 60_000 }),
+    ]);
+    expect(await res.json()).toEqual({ accepted: 2, rejected: 2 });
   });
 
   test("rejects a body that is not an array", async () => {

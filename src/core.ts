@@ -28,7 +28,7 @@ export interface TrackerOptions {
   transport?: Transport;
   beforeSend?: BeforeSend;
   source?: Source;
-  /** Send when the queue has this many events. Default 20. */
+  /** Send when the queue has this many events. Default 20. Maximum 100. */
   batchSize?: number;
   /** Send at this interval in ms. 0 turns the timer off. Default 5000. */
   flushInterval?: number;
@@ -46,6 +46,8 @@ export interface Tracker {
   shutdown(): Promise<void>;
   readonly sessionId: string;
 }
+
+const MAX_BATCH_SIZE = 100;
 
 export function randomId(): string {
   const c = (globalThis as { crypto?: Crypto }).crypto;
@@ -72,12 +74,13 @@ export function createTracker(options: TrackerOptions): Tracker {
   const {
     beforeSend,
     source = "browser",
-    batchSize = 20,
     flushInterval = 5000,
     maxQueue = 1000,
     disabled = false,
     onError = () => {},
   } = options;
+  // The server rejects batches of more than 100 events (MAX_EVENTS in ingest.ts).
+  const batchSize = Math.max(1, Math.min(options.batchSize ?? 20, MAX_BATCH_SIZE));
   const transport =
     options.transport ??
     (options.endpoint ? fetchTransport(options.endpoint) : undefined);

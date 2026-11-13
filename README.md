@@ -69,7 +69,7 @@ Pass `AppState` so the library flushes when the app goes to the background.
 - `endpoint`: URL of `POST /events`. Not needed when you give a `transport`.
 - `transport`: a function that replaces the default sender.
 - `beforeSend`: change an event, or return `null` or `false` to drop it.
-- `batchSize`: send when the queue has this many events. Default 20.
+- `batchSize`: send when the queue has this many events. Default 20. Values above 100 become 100.
 - `flushInterval`: send every this many ms. `0` turns the timer off. Default 5000.
 - `maxQueue`: drop the oldest events above this size. Default 1000.
 - `disabled`: when `true`, `track()` does nothing.
